@@ -1,0 +1,14 @@
+# ignored files
+c_type_gram.c
+c_type_gram.h
+c_type_gram.out
+lemon
+lemon.c
+lempar.c
+cTypeCompiler
+c_type_lex.c
+macros.c
+sqlite3/
+test_types.h
+type_macros.h
+
