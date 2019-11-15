@@ -16,6 +16,7 @@ typedef struct context_s{
 typedef struct parser_s{
 	u8 * type_name;
 	u8 * member_name[50];
+	u8 * member_ctype[50];
 	s32 status;
 	s32 num_members;
 } ParserState;
@@ -172,9 +173,9 @@ static int semantic_actions_Wstate(ParserState * parser_state, unsigned char * o
 }
 
 
-                                     //
-int main()                           //
-{                                    //
+
+int main(int argc, char **argv)
+{
 	
 	const unsigned char * data;
 	/*const unsigned char *data3 = "this is s come garbage 321 typedef struct BibleStudies {"
@@ -312,10 +313,5 @@ int main()                           //
 	/* free parser memory */
 	ParseFree(pParser, free );
 	
-	
-	
     return 0;
-}   
-
-
-
+}

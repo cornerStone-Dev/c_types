@@ -71,7 +71,7 @@ mem ::= idlist ptr idlist(A) SEMI. {
 }
 
 idlist(A) ::= idlist IDENT(B). {A = B;}
-idlist ::= IDENT. //{A = X; /*A-overwrites-X*/ } not needed as this is default
+idlist ::= IDENT.
 
 idend ::= IDENT(A) SEMI. {
 	parser_state->member_name[parser_state->num_members] = A;
@@ -82,6 +82,7 @@ ptr ::= ptr ATSIGN.
 ptr ::= ATSIGN.
 
 
+//idlist(A) ::= IDENT(X). //{A = X; /*A-overwrites-X*/ } not needed as this is default
 
 /*ptrlist ::= ptrlist ptr.
 ptrlist ::= ptr.
