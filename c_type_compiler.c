@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdint.h>
 
-//#define YYERRORSYMBOL
 #include "std_types.h"
 
 typedef struct context_s{
@@ -23,9 +22,12 @@ typedef struct parser_s{
 
 
 #include "sqlite3/sqlite3.h"
-#include "c_type_gram.h"
-#include "c_type_lex.c"
-#include "c_type_gram.c"
+#include "tool_output/c_type_gram.h"
+#include "tool_output/c_type_lex.c"
+#include "tool_output/c_type_gram.c"
+
+#define INTPUT_FILE "input/test_types.h"
+#define OUTPUT_FILE "output/type_macros.h"
 
 /* now that we have a correct parse walk the parse to generate code */
 static int semantic_actions_Wstate(ParserState * parser_state, unsigned char * output)
@@ -238,10 +240,10 @@ int main(int argc, char **argv)
 	"default: 0)\n");
 	
 	
-	pFile = fopen ( "test_types.h" , "rb" );
+	pFile = fopen ( INTPUT_FILE, "rb" );
 	if (pFile==NULL) {fputs ("File error",stderr); exit (1);}
 	
-	outputFile = fopen ( "type_macros.h" , "w" );
+	outputFile = fopen ( OUTPUT_FILE, "w" );
 	if (outputFile==NULL) {fputs ("File error",stderr); exit (1);}
 	
 	// obtain file size:

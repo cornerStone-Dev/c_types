@@ -1,17 +1,23 @@
 
-all: cTypeCompiler
+all: bin/cTypeCompiler
 
-cTypeCompiler: c_type_compiler.c c_type_gram.c c_type_lex.c
-	gcc -O2 -s -o cTypeCompiler c_type_compiler.c sqlite3/sqlite3.o -Wall -Winline -Wignored-attributes -ldl
+bin/cTypeCompiler: c_type_compiler.c tool_output/c_type_gram.c tool_output/c_type_lex.c
+	gcc -O2 -s -o bin/cTypeCompiler c_type_compiler.c sqlite3/sqlite3.o -Wall -Winline -Wignored-attributes -ldl
 
-c_type_gram.c: lemon c_type_gram.y lempar.c
-	./lemon c_type_gram.y -s
+tool_output/c_type_gram.c: tool/lemon c_type_gram.y
+	./tool/lemon c_type_gram.y -s -dtool_output
 
-lemon: lemon.c
-	gcc -O2 lemon.c -o lemon
+tool/lemon: tool/lemon.c tool/lempar.c
+	gcc -O2 tool/lemon.c -o tool/lemon
 
-c_type_lex.c: c_type_lex.re
-	re2c -W c_type_lex.re -o c_type_lex.c
+tool/lemon.c:
+	curl https://raw.githubusercontent.com/sqlite/sqlite/master/tool/lemon.c > tool/lemon.c
+
+tool/lempar.c:
+	curl https://raw.githubusercontent.com/sqlite/sqlite/master/tool/lempar.c > tool/lempar.c
+
+tool_output/c_type_lex.c: c_type_lex.re
+	re2c -W c_type_lex.re -o tool_output/c_type_lex.c
 
 clean:
-	rm cTypeCompiler
+	rm bin/cTypeCompiler
