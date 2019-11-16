@@ -1,11 +1,11 @@
 # c_type_parsing
 
-Requires lemon tool from sqlite3 source repository.
+Requires gcc, make, and re2c. If on Ubunutu intall build-essential and re2c.
 
-Requires re2c, which is available via your friendly package manager.
+Uses lemon and sqlite3, but the Makefile will take care of that for you.
 
-Requires sqlite3.^
+Clone from git, then `$ make`
 
 Browse the Makefile for more information.
 
-^No code actually using sqlite 3 yet.
+>No code actually using sqlite 3 yet.
