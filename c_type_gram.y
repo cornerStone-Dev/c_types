@@ -2,9 +2,9 @@
 /*
 STANDARD C
 typedef struct BibleStudies {
-    const uint8_t * studentName;
-    const uint8_t * studyDescription;
-    const uint8_t * studyPrayer;
+	const uint8_t * studentName;
+	const uint8_t * studyDescription;
+	const uint8_t * studyPrayer;
 } BibleStudy;
 
 BibleStudy biblestudy1;
@@ -37,15 +37,18 @@ convertToJson(biblestudy1);
 /* not active when YYNOERRORRECOVERY is defined */
 /*%parse_failure {
 	printf("parse_failure\n");
-	parser_state->error = 1;
+	p_s->error = 1;
 }*/
 
-%extra_context {ParserState * parser_state}
+%extra_context {ParserState * p_s}
+
+%token_type {Token}
+%default_type {Token}
 
 %syntax_error {
 	printf("syntax_error\n");
-	parser_state->status = -1;
-	parser_state->num_members=0;
+	p_s->status = -1;
+	p_s->n_m=0;
 	while( yypParser->yytos>yypParser->yystack ) yy_pop_parser_stack(yypParser);
 }
 
@@ -58,28 +61,33 @@ typelist ::= etype.
 
 etype ::= TYPEDEF STRUCT IDENT LBLOCK memlist RBLOCK IDENT(A) SEMI. {
 	printf("type accepted\n");
-	parser_state->type_name=A;
-	parser_state->status = 1;
+	p_s->type_name=A.s;
+	p_s->tnl=A.l;
+	p_s->status = 1;
 }
 memlist ::= memlist mem.
 memlist ::= mem.
 
-mem ::= idlist idend.
-mem ::= idlist ptr idlist(A) SEMI. {
-	parser_state->member_name[parser_state->num_members] = A;
-	parser_state->num_members+=1;
+mem ::= IDENT(A) idend. {
+	p_s->mem_type[p_s->n_m] = A.s;
+	p_s->mtl[p_s->n_m] = A.l;
+	p_s->n_m+=1;
 }
-
-idlist(A) ::= idlist IDENT(B). {A = B;}
-idlist ::= IDENT.
+mem ::= IDENT(B) ptr IDENT(A) SEMI. {
+	p_s->mem_name[p_s->n_m] = A.s;
+	p_s->mnl[p_s->n_m] = A.l;
+	p_s->mem_type[p_s->n_m] = B.s;
+	p_s->mtl[p_s->n_m] = B.l;
+	p_s->n_m+=1;
+}
 
 idend ::= IDENT(A) SEMI. {
-	parser_state->member_name[parser_state->num_members] = A;
-	parser_state->num_members+=1;
+	p_s->mem_name[p_s->n_m] = A.s;
+	p_s->mnl[p_s->n_m] = A.l;
 }
 
-ptr ::= ptr ATSIGN.
-ptr ::= ATSIGN.
+ptr ::= ptr STAR.
+ptr ::= STAR.
 
 
 //idlist(A) ::= IDENT(X). //{A = X; /*A-overwrites-X*/ } not needed as this is default
@@ -87,7 +95,7 @@ ptr ::= ATSIGN.
 /*ptrlist ::= ptrlist ptr.
 ptrlist ::= ptr.
 
-ptr ::= ATSIGN.
+ptr ::= STAR.
 ptr ::= .*/
 
 //def_open ::= TYPEDEF STRUCT IDENT LBLOCK.

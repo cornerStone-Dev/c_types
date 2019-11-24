@@ -6,4 +6,4 @@ output/
 test/
 tool/
 tool_output/
-
+*.geany

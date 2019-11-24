@@ -5,19 +5,25 @@
 #include <string.h>
 #include <stdint.h>
 
+//#define NDEBUG
+#define Parse_ENGINEALWAYSONSTACK
+
 #include "std_types.h"
 
-typedef struct context_s{
-	u8 * string_start;
-	u8 * string_end;
-} Context;
+typedef struct token_s{
+	u8 * s;
+	u32  l;
+} Token;
 
 typedef struct parser_s{
 	u8 * type_name;
-	u8 * member_name[50];
-	u8 * member_ctype[50];
-	s32 status;
-	s32 num_members;
+	u8 * mem_name[50];
+	u8 * mem_type[50];
+	u32  mnl[50];
+	u32  mtl[50];
+	u32  tnl;
+	s32  status;
+	u32  n_m;
 } ParserState;
 
 
@@ -30,7 +36,7 @@ typedef struct parser_s{
 #define OUTPUT_FILE "output/type_macros.h"
 
 /* now that we have a correct parse walk the parse to generate code */
-static int semantic_actions_Wstate(ParserState * parser_state, unsigned char * output)
+static int semantic_actions_Wstate(ParserState * p_s, unsigned char * output)
 {
 	/* cache chars */
 	/* need information on struct members */
@@ -40,35 +46,35 @@ static int semantic_actions_Wstate(ParserState * parser_state, unsigned char * o
 	int x;
 	unsigned char ptrCustomType = 0;
 	
-	printf("type name = %s\n", parser_state->type_name);
-	for(x=0;x<parser_state->num_members;x++) {
-		printf("member_name = %s\n", parser_state->member_name[x]);
+	printf("type name = %s\n", p_s->type_name);
+	for(x=0;x<p_s->n_m;x++) {
+		printf("mem_name = %s\n", p_s->mem_name[x]);
 	}
 	
 	/* output number of members */
-	output+=sprintf((char*)output, "#define %s_numMembers  = %d\n",parser_state->type_name, parser_state->num_members);
+	output+=sprintf((char*)output, "#define %s_numMembers  = %d\n",p_s->type_name, p_s->n_m);
 	
 	/* output names */
-	output+=sprintf((char*)output, "#define %s_memberNames ", parser_state->type_name);
+	output+=sprintf((char*)output, "#define %s_memberNames ", p_s->type_name);
 	
-	output+=sprintf((char*)output, "const uint8 * const %s_memberNames[] ={\\\n",parser_state->type_name);
+	output+=sprintf((char*)output, "const uint8 * const %s_memberNames[] ={\\\n",p_s->type_name);
 	
-	for(x=0;x<parser_state->num_members;x++) {
-		output+=sprintf((char*)output, "\"%s\",\\\n",parser_state->member_name[x]);
+	for(x=0;x<p_s->n_m;x++) {
+		output+=sprintf((char*)output, "\"%s\",\\\n",p_s->mem_name[x]);
 	}
 	output+=sprintf((char*)output, "};\n");
 	
 	/* output toJson function */
-	output+=sprintf((char*)output, "#define %s_toJSON_Func \\\n", parser_state->type_name);
+	output+=sprintf((char*)output, "#define %s_toJSON_Func \\\n", p_s->type_name);
 	
 	output+=sprintf((char*)output, 
 	"uint8_t * %s_toJSON(uint8_t * b, const %s * t) \\\n"
-	, parser_state->type_name, parser_state->type_name);
+	, p_s->type_name, p_s->type_name);
 	output+=sprintf((char*)output, "{ \\\n");
 	output+=sprintf((char*)output, "\tb = (uint8_t *)stpcpy((char *)b, \"{\"); \\\n");
 	/* print out members to JSON */
-	for(x=0;x<parser_state->num_members;x++) {
-		mem_name = parser_state->member_name[x];
+	for(x=0;x<p_s->n_m;x++) {
+		mem_name = p_s->mem_name[x];
 		/* check if this is a custom type */
 		if ( (*mem_name == 'C') && (*(mem_name+1) == 'T') ) {
 			/* this has the custom type prefix */
@@ -108,12 +114,12 @@ static int semantic_actions_Wstate(ParserState * parser_state, unsigned char * o
 					"\t\tb = (uint8_t *)stpcpy((char *)b, \"]\"); \\\n"
 					"\t} \\\n"
 					,
-					parser_state->member_name[x-1], // 1
+					p_s->mem_name[x-1], // 1
 					custom_type, // 2
 					x, // 3
-					parser_state->member_name[x], // 4
-					parser_state->member_name[x], // 5
-					parser_state->member_name[x-1], // 6
+					p_s->mem_name[x], // 4
+					p_s->mem_name[x], // 5
+					p_s->mem_name[x-1], // 6
 					custom_type, // 7
 					x, // 7
 					x // 8
@@ -126,9 +132,9 @@ static int semantic_actions_Wstate(ParserState * parser_state, unsigned char * o
 					output+=sprintf((char*)output,
 					"\tb+=sprintf((char *)b, \"\\\"%s\\\":\"); \\\n" // 5
 					"\tb = %s_toJSON(b, &t->%s); \\\n"
-					,parser_state->member_name[x],
+					,p_s->mem_name[x],
 					custom_type,
-					parser_state->member_name[x]
+					p_s->mem_name[x]
 					);
 				}
 				/* finished with special type, next */
@@ -180,18 +186,19 @@ int main(int argc, char **argv)
 {
 	
 	const unsigned char * data;
+	void *pEngine;     /* The LEMON-generated LALR(1) parser */
+	yyParser sEngine;  /* Space to hold the Lemon-generated Parser object */
 	/*const unsigned char *data3 = "this is s come garbage 321 typedef struct BibleStudies {"
 	"int numStudents;";*/ /* IMMUTABLE will fail if tested with */
-    /*"ChurchGuest CT_ChurchGuest_guest;"
-    "const uint8_t * studyDescription;"
-    "const uint8_t * studyPrayer;} BibleStudy; ";*/
+	/*"ChurchGuest CT_ChurchGuest_guest;"
+	"const uint8_t * studyDescription;"
+	"const uint8_t * studyPrayer;} BibleStudy; ";*/
 	//unsigned char *lex_stack[100];
 	unsigned char output_string[4096] = {0};
 	unsigned char * output = output_string;
-	Context context = {0};
-	void *pParser;
+	Token token = {0};
 	int x, tmp_token;
-	ParserState parser_state = {0};
+	ParserState p_s = {0};
 	FILE * pFile, * outputFile;
 	size_t lSize;
 	unsigned char * buffer;
@@ -201,42 +208,42 @@ int main(int argc, char **argv)
 	/* output generic funtions */
 	output+=sprintf((char*)output, 
 	"#define FMT(x) _Generic((x), \\\n"
-    "char: \"%%c\", \\\n"
-    "signed char: \"%%hhd\", \\\n"
-    "unsigned char: \"%%hhu\", \\\n"
-    "signed short: \"%%hd\", \\\n"
-    "unsigned short: \"%%hu\", \\\n"
-    "signed int: \"%%d\", \\\n"
-    "unsigned int: \"%%u\", \\\n"
-    "long int: \"%%ld\", \\\n"
-    "unsigned long int: \"%%lu\", \\\n"
-    "long long int: \"%%lld\", \\\n"
-    "unsigned long long int: \"%%llu\", \\\n"
-    "float: \"%%f\", \\\n"
-    "double: \"%%f\", \\\n"
-    "long double: \"%%Lf\", \\\n"
-    "char *: \"\\\"%%s\\\"\", \\\n"
+	"char: \"%%c\", \\\n"
+	"signed char: \"%%hhd\", \\\n"
+	"unsigned char: \"%%hhu\", \\\n"
+	"signed short: \"%%hd\", \\\n"
+	"unsigned short: \"%%hu\", \\\n"
+	"signed int: \"%%d\", \\\n"
+	"unsigned int: \"%%u\", \\\n"
+	"long int: \"%%ld\", \\\n"
+	"unsigned long int: \"%%lu\", \\\n"
+	"long long int: \"%%lld\", \\\n"
+	"unsigned long long int: \"%%llu\", \\\n"
+	"float: \"%%f\", \\\n"
+	"double: \"%%f\", \\\n"
+	"long double: \"%%Lf\", \\\n"
+	"char *: \"\\\"%%s\\\"\", \\\n"
 	"unsigned char *: \"\\\"%%s\\\"\", \\\n"
 	"const char *: \"\\\"%%s\\\"\", \\\n"
 	"const unsigned char *: \"\\\"%%s\\\"\", \\\n"
-    "void *: \"%%p\")\n");
+	"void *: \"%%p\")\n");
 	
 	output+=sprintf((char*)output, 
 	"#define NP_C(x) _Generic((x), \\\n"
-    "char: 1, \\\n"
-    "signed char: 1, \\\n"
-    "unsigned char: 1, \\\n"
-    "signed short: 1, \\\n"
-    "unsigned short: 1, \\\n"
-    "signed int: 1, \\\n"
-    "unsigned int: 1, \\\n"
-    "long int: 1, \\\n"
-    "unsigned long int: 1, \\\n"
-    "long long int: 1, \\\n"
-    "unsigned long long int: 1, \\\n"
-    "float: 1, \\\n"
-    "double: 1, \\\n"
-    "long double: 1, \\\n"
+	"char: 1, \\\n"
+	"signed char: 1, \\\n"
+	"unsigned char: 1, \\\n"
+	"signed short: 1, \\\n"
+	"unsigned short: 1, \\\n"
+	"signed int: 1, \\\n"
+	"unsigned int: 1, \\\n"
+	"long int: 1, \\\n"
+	"unsigned long int: 1, \\\n"
+	"long long int: 1, \\\n"
+	"unsigned long long int: 1, \\\n"
+	"float: 1, \\\n"
+	"double: 1, \\\n"
+	"long double: 1, \\\n"
 	"default: 0)\n");
 	
 	
@@ -255,48 +262,50 @@ int main(int argc, char **argv)
 	buffer = (unsigned char*) malloc (sizeof(char)*lSize+1);
 	if (buffer == NULL) {fputs ("Memory error",stderr); exit (2);}
 	data = buffer;
-	/* initialize pointer to valid thing to set to 0 for lexxer */
-	context.string_end = output;
 	// copy the file into the buffer:
 	result = fread (buffer,1,lSize,pFile);
 	if (result != lSize) {fputs ("Reading error",stderr); exit (3);}
 	
 	buffer[lSize]=0;
 	
-	pParser = ParseAlloc( malloc, &parser_state );
-	
+	/*pParser = ParseAlloc( malloc, &p_s );*/
+	pEngine = &sEngine;
+	ParseInit(pEngine, &p_s);
+
+#ifndef NDEBUG
 	ParseTrace(stdout, "debug:: ");
+#endif
 
 	printf("starting parse\n");
-	parser_state.status = 0;
+	p_s.status = 0;
 	do {
-		tmp_token = lex(&data, &context);
+		tmp_token = lex(&data, &token);
 
-		Parse(pParser, tmp_token, context.string_start);
+		Parse(pEngine, tmp_token, token);
 		
 		/* if there was a parse failure reset stack */
-		if (parser_state.status == -1) {
+		if (p_s.status == -1) {
 			printf("error actions\n");
-			parser_state.status = 0;
+			p_s.status = 0;
 			
-		} else if (parser_state.status == 1) {
+		} else if (p_s.status == 1) {
 			/* parser has found a type */
-			//semantic_actions(&context, &output_string);
-			semantic_actions_Wstate(&parser_state, output);
+			//semantic_actions(&token, &output_string);
+			semantic_actions_Wstate(&p_s, output);
 			fwrite (output_string , sizeof(char), strlen((const char *)output_string), outputFile);
 			
-			printf("type name = %s\n", parser_state.type_name);
-			for(x=0;x<parser_state.num_members;x++) {
-				printf("member_name = %s\n", parser_state.member_name[x]);
+			printf("type name = %s\n", p_s.type_name);
+			for(x=0;x<p_s.n_m;x++) {
+				printf("mem_name = %s\n", p_s.mem_name[x]);
 			}
 			
-			parser_state.num_members = 0;
+			p_s.n_m = 0;
 			output = output_string;
 			
 			if (tmp_token==0) {
 				break;
 			} else {
-				parser_state.status = 0;
+				p_s.status = 0;
 			}
 		} 
 		
@@ -313,7 +322,8 @@ int main(int argc, char **argv)
 	/* free memory that stored copy of file */
 	free (buffer);
 	/* free parser memory */
-	ParseFree(pParser, free );
+	/*ParseFree(pParser, free );*/
+	ParseFinalize(pEngine);
 	
-    return 0;
+	return 0;
 }
