@@ -96,7 +96,8 @@ static s32
 has_cnt_provided(ParserState * p_s, unsigned char * mem_type, u8 * cnt_type_loc, u32 mtl)
 {
 	s32 stm_state;
-	
+	s32 mem_num;
+
 	sqlite3_bind_text(
 		g_stmtAr[g_sel_cnMemNum],
 		1,
@@ -107,7 +108,9 @@ has_cnt_provided(ParserState * p_s, unsigned char * mem_type, u8 * cnt_type_loc,
 	if(stm_state == SQLITE_DONE) {
 		return -1;
 	}
-	return sqlite3_column_int(g_stmtAr[g_sel_cnMemNum], 0);
+	mem_num = sqlite3_column_int(g_stmtAr[g_sel_cnMemNum], 0);
+	sqlite3_reset(g_stmtAr[g_sel_cnMemNum]);
+	return mem_num;
 }
 
 /* now that we have a correct parse walk the parse to generate code */
