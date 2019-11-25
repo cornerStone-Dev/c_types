@@ -71,6 +71,7 @@ memlist ::= mem.
 mem ::= IDENT(A) idend. {
 	p_s->mem_type[p_s->n_m] = A.s;
 	p_s->mtl[p_s->n_m] = A.l;
+	p_s->ptr[p_s->n_m] = 0;
 	p_s->n_m+=1;
 }
 mem ::= IDENT(B) ptr IDENT(A) SEMI. {
@@ -86,8 +87,8 @@ idend ::= IDENT(A) SEMI. {
 	p_s->mnl[p_s->n_m] = A.l;
 }
 
-ptr ::= ptr STAR.
-ptr ::= STAR.
+ptr ::= ptr STAR. {p_s->ptr[p_s->n_m] = 2;}
+ptr ::= STAR.     {p_s->ptr[p_s->n_m] = 1;}
 
 
 //idlist(A) ::= IDENT(X). //{A = X; /*A-overwrites-X*/ } not needed as this is default
